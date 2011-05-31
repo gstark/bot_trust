@@ -98,7 +98,6 @@ class Coordinator
   end
 
   def tick
-    @tick_count += 1
     robots.each do |robot_color,robot|
       robot.tick
     end
@@ -106,6 +105,8 @@ class Coordinator
     robots.each do |robot_color,robot|
       robot.post_tick
     end
+
+    @tick_count += 1
   end
 
   def completed?
