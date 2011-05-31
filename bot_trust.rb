@@ -127,5 +127,5 @@ number_of_test_cases = STDIN.gets.to_i
 number_of_test_cases.times do |case_number|
   coordinator = Coordinator.new(gets)
   coordinator.run
-  puts "Case #{case_number+1}: #{coordinator.tick_count}"
+  puts "Case \##{case_number+1}: #{coordinator.tick_count}"
 end
