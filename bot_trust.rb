@@ -12,11 +12,11 @@ class Robot
   end
 
   def add_task(button_to_press, dependency)
-    new_dependency = ButtonPress.new
+    new_dependency = Dependency.new
 
-    @tasks << { :button_to_press => button_to_press.to_i,
-                :dependency      => dependency,
-                :trigger         => new_dependency }
+    @tasks << { :button_to_press        => button_to_press.to_i,
+                :dependency_to_wait     => dependency,
+                :dependency_to_complete => new_dependency }
 
     return new_dependency
   end
@@ -35,9 +35,9 @@ class Robot
   end
 
   def post_tick
-    @pending_trigger.complete if @pending_trigger
-
-    @pending_trigger = nil
+    # This kind of bothers me, that I have to test
+    # for the presence of a pending dependency_to_complete
+    @pending_dependency_to_complete ? @pending_dependency_to_complete.complete! : nil
   end
 
   def wait
@@ -45,13 +45,16 @@ class Robot
   end
 
   def press_button
-    @pending_trigger = tasks.first[:trigger]
+    # We have to store this state since the dependency
+    # really isn't complete until after all the robots
+    # have processed the current tick
+    @pending_dependency_to_complete = tasks.first[:dependency_to_complete]
 
     tasks.shift
   end
 
   def can_press_button?
-    tasks.first && tasks.first[:dependency].completed
+    tasks.first && tasks.first[:dependency_to_wait].completed
   end
 
   def need_to_move?
@@ -64,14 +67,14 @@ class Robot
   end
 end
 
-class ButtonPress
+class Dependency
   attr_accessor :completed
 
   def initialize(state = {})
-    self.complete if state[:completed]
+    self.complete! if state[:completed]
   end
 
-  def complete
+  def complete!
     self.completed = true
   end
 end
@@ -79,15 +82,21 @@ end
 class Coordinator
   attr_accessor :tick_count
 
+  def add_button_press_task_to_robot(button,robot)
+    @previous_dependency = robot.add_task(button, @previous_dependency)
+  end
+
   def initialize(data_string)
+
     elements = data_string.split
 
     @number_of_buttons = elements.shift
-    dependency         = ButtonPress.new(:completed => true)
 
+    # Having to "prime the pump" with a completed dependency
+    # makes the robot code easier, but seems a bit hackish here
+    @previous_dependency = Dependency.new(:completed => true)
     elements.each_slice(2) do |robot_color,button|
-      robot = robot_for_color(robot_color)
-      dependency = robot.add_task(button, dependency)
+      add_button_press_task_to_robot(button, robot_for_color(robot_color))
     end
 
     @tick_count = 0
@@ -98,13 +107,8 @@ class Coordinator
   end
 
   def tick
-    robots.each do |robot_color,robot|
-      robot.tick
-    end
-
-    robots.each do |robot_color,robot|
-      robot.post_tick
-    end
+    robots.each { |robot_color,robot| robot.tick }
+    robots.each { |robot_color,robot| robot.post_tick }
 
     @tick_count += 1
   end
