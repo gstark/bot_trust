@@ -1,32 +1,28 @@
 DEBUG = false
 
 class Robot
-  attr_accessor :buttons
-  attr_accessor :dependencies
-  attr_accessor :triggers
+  attr_accessor :tasks
   attr_accessor :position
   attr_accessor :color
 
   def initialize(color)
-    @color        = color
-    @buttons      = []
-    @dependencies = []
-    @triggers     = []
-    @position     = 1
+    @color    = color
+    @tasks    = []
+    @position = 1
   end
 
-  def add_button(button, dependency)
+  def add_task(button_to_press, dependency)
     new_dependency = ButtonPress.new
 
-    buttons      << button.to_i
-    dependencies << dependency
-    triggers     << new_dependency
+    @tasks << { :button_to_press => button_to_press.to_i,
+                :dependency      => dependency,
+                :trigger         => new_dependency }
 
-    new_dependency
+    return new_dependency
   end
 
   def completed?
-    buttons.empty?
+    @tasks.empty?
   end
 
   def tick
@@ -39,7 +35,7 @@ class Robot
   end
 
   def post_tick
-    @pending_trigger.completed = true if @pending_trigger
+    @pending_trigger.complete if @pending_trigger
 
     @pending_trigger = nil
   end
@@ -49,29 +45,35 @@ class Robot
   end
 
   def press_button
-    @pending_trigger = triggers.first
+    @pending_trigger = tasks.first[:trigger]
 
-    triggers.shift
-    buttons.shift
-    dependencies.shift
+    tasks.shift
   end
 
   def can_press_button?
-    dependencies.first && dependencies.first.completed
+    tasks.first && tasks.first[:dependency].completed
   end
 
   def need_to_move?
-    buttons.first != position
+    tasks.first[:button_to_press] != position
   end
 
   def move
-    @position += (buttons.first < position) ? -1 : 1
+    @position += (tasks.first[:button_to_press] < position) ? -1 : 1
     puts "#{color} move to #{@position}" if DEBUG
   end
 end
 
 class ButtonPress
   attr_accessor :completed
+
+  def initialize(state = {})
+    self.complete if state[:completed]
+  end
+
+  def complete
+    self.completed = true
+  end
 end
 
 class Coordinator
@@ -81,20 +83,18 @@ class Coordinator
     elements = data_string.split
 
     @number_of_buttons = elements.shift
-    dependency         = ButtonPress.new
-    dependency.completed = true
+    dependency         = ButtonPress.new(:completed => true)
 
     elements.each_slice(2) do |robot_color,button|
-      dependency = robot_for_color(robot_color).add_button(button, dependency)
+      robot = robot_for_color(robot_color)
+      dependency = robot.add_task(button, dependency)
     end
 
     @tick_count = 0
   end
 
   def run
-    until completed?
-      tick
-    end
+    tick until completed?
   end
 
   def tick
@@ -106,7 +106,6 @@ class Coordinator
     robots.each do |robot_color,robot|
       robot.post_tick
     end
-
   end
 
   def completed?
@@ -123,20 +122,10 @@ class Coordinator
 end
 
 
-coordinator = Coordinator.new("4 O 2 B 1 B 2 O 4")
-
-coordinator.run
-puts coordinator.tick_count
-
-
-coordinator = Coordinator.new("3 O 5 O 8 B 100")
-
-coordinator.run
-puts coordinator.tick_count
-
-
-
-coordinator = Coordinator.new("2 B 2 B 1")
-
-coordinator.run
-puts coordinator.tick_count
+# Main
+number_of_test_cases = STDIN.gets.to_i
+number_of_test_cases.times do |case_number|
+  coordinator = Coordinator.new(gets)
+  coordinator.run
+  puts "Case #{case_number+1}: #{coordinator.tick_count}"
+end
