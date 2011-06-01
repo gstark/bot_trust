@@ -1,9 +1,9 @@
 DEBUG = false
 
 class Robot
-  attr_accessor :tasks
-  attr_accessor :position
-  attr_accessor :color
+  attr_reader :tasks
+  attr_reader :position
+  attr_reader :color
 
   def initialize(color)
     @color    = color
@@ -18,7 +18,7 @@ class Robot
   end
 
   def completed?
-    @tasks.empty?
+    tasks.empty?
   end
 
   def tick
