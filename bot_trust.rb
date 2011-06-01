@@ -11,14 +11,10 @@ class Robot
     @position = 1
   end
 
-  def add_task(button_to_press, dependency)
-    new_dependency = Dependency.new
-
+  def add_task(button_to_press, dependency_to_wait, dependency_to_trigger)
     @tasks << { :button_to_press        => button_to_press.to_i,
-                :dependency_to_wait     => dependency,
-                :dependency_to_complete => new_dependency }
-
-    return new_dependency
+                :dependency_to_wait     => dependency_to_wait,
+                :dependency_to_complete => dependency_to_trigger }
   end
 
   def completed?
@@ -46,10 +42,9 @@ class Robot
 
   def press_button
     # Set the post tick proc to complete this dependency
-    dependency_to_complete = current_task[:dependency_to_complete]
-    @post_tick_procs << Proc.new { dependency_to_complete.complete! }
-
-    tasks.shift
+    # and remove the task from the queue
+    @post_tick_procs << Proc.new { current_task[:dependency_to_complete].complete! }
+    @post_tick_procs << Proc.new { tasks.shift }
   end
 
   def can_press_button?
@@ -85,18 +80,24 @@ end
 class Coordinator
   attr_accessor :tick_count
 
-  def add_button_press_task_to_robot(button,robot)
-    @previous_dependency = robot.add_task(button, @previous_dependency)
+  def add_button_press_task_to_robot(button, robot)
+    dependency_to_wait    = @dependency_to_wait || Dependency.new(:completed => true)
+    dependency_to_trigger = Dependency.new
+
+    robot.add_task(button, dependency_to_wait, dependency_to_trigger)
+
+    @dependency_to_wait = dependency_to_trigger
   end
 
   def initialize(data_string)
     elements = data_string.split
 
-    @number_of_buttons = elements.shift
+    # Consume the number of buttons to press as
+    # we can figure that out from the input
+    elements.shift
 
     # Having to "prime the pump" with a completed dependency
     # makes the robot code easier, but seems a bit hackish here
-    @previous_dependency = Dependency.new(:completed => true)
     elements.each_slice(2) do |robot_color,button|
       add_button_press_task_to_robot(button, robot_for_color(robot_color))
     end
