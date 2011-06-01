@@ -66,14 +66,14 @@ class Robot
 end
 
 class Dependency
-  attr_accessor :completed
+  attr_reader :completed
 
   def initialize(state = {})
     self.complete! if state[:completed]
   end
 
   def complete!
-    self.completed = true
+    @completed = true
   end
 end
 
