@@ -26,6 +26,8 @@ class Robot
   end
 
   def tick
+    @post_tick_procs = []
+
     case
       when completed?        then wait
       when need_to_move?     then move
@@ -35,9 +37,7 @@ class Robot
   end
 
   def post_tick
-    # This kind of bothers me, that I have to test
-    # for the presence of a pending dependency_to_complete
-    @pending_dependency_to_complete ? @pending_dependency_to_complete.complete! : nil
+    @post_tick_procs.each { |proc| proc.call }
   end
 
   def wait
@@ -45,25 +45,28 @@ class Robot
   end
 
   def press_button
-    # We have to store this state since the dependency
-    # really isn't complete until after all the robots
-    # have processed the current tick
-    @pending_dependency_to_complete = tasks.first[:dependency_to_complete]
+    # Set the post tick proc to complete this dependency
+    dependency_to_complete = current_task[:dependency_to_complete]
+    @post_tick_procs << Proc.new { dependency_to_complete.complete! }
 
     tasks.shift
   end
 
   def can_press_button?
-    tasks.first && tasks.first[:dependency_to_wait].completed
+    current_task[:dependency_to_wait].completed
   end
 
   def need_to_move?
-    tasks.first[:button_to_press] != position
+    current_task[:button_to_press] != position
   end
 
   def move
-    @position += (tasks.first[:button_to_press] < position) ? -1 : 1
+    @position += (current_task[:button_to_press] < position) ? -1 : 1
     puts "#{color} move to #{@position}" if DEBUG
+  end
+
+  def current_task
+    tasks.first
   end
 end
 
@@ -87,7 +90,6 @@ class Coordinator
   end
 
   def initialize(data_string)
-
     elements = data_string.split
 
     @number_of_buttons = elements.shift
