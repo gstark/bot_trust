@@ -96,8 +96,6 @@ class Coordinator
     # we can figure that out from the input
     elements.shift
 
-    # Having to "prime the pump" with a completed dependency
-    # makes the robot code easier, but seems a bit hackish here
     elements.each_slice(2) do |robot_color,button|
       add_button_press_task_to_robot(button, robot_for_color(robot_color))
     end
