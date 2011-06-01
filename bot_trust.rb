@@ -81,12 +81,9 @@ class Coordinator
   attr_accessor :tick_count
 
   def add_button_press_task_to_robot(button, robot)
-    dependency_to_wait    = @dependency_to_wait || Dependency.new(:completed => true)
-    dependency_to_trigger = Dependency.new
+    dependencies << Dependency.new
 
-    robot.add_task(button, dependency_to_wait, dependency_to_trigger)
-
-    @dependency_to_wait = dependency_to_trigger
+    robot.add_task(button, next_to_last_dependency, last_dependency)
   end
 
   def initialize(data_string)
@@ -124,6 +121,19 @@ class Coordinator
 
   def robots
     @robots ||= {}
+  end
+
+  def next_to_last_dependency
+    dependencies[-2]
+  end
+
+  def last_dependency
+    dependencies[-1]
+  end
+
+  def dependencies
+    # Start with depending on an already triggered dependency
+    @dependencies ||= [Dependency.new(:completed => true)]
   end
 end
 
